@@ -1,6 +1,8 @@
 # coding=utf-8
 import optparse
 from socket import *
+from threading import *
+screen_lock = Semaphore(value=1)
 
 
 # 尝试连接
@@ -8,15 +10,19 @@ def conn_scan(target_host, target_port):
     try:
         conn_socket = socket(AF_INET, SOCK_STREAM)
         conn_socket.connect((target_host, target_port))
-        conn_socket.send("hello python\r\n")
+        conn_socket.send("test information\r\n")
         response = conn_socket.recv(1024)
 
+        screen_lock.acquire()
         print "%s response message: %s" % (target_host, str(response))
         print "[+]%d/tcp open" % target_port
         conn_socket.close()
     except StandardError, e:
+        screen_lock.acquire()
         print e
         print "[-]%d/tcp closed" % target_port
+    finally:
+        screen_lock.release()
 
 
 # 端口扫描
@@ -34,8 +40,9 @@ def port_scan(tgt_host, tgt_ports):
         print "\n[-] Scan Results for:%s" % tgt_ip
     setdefaulttimeout(1)
     for tgt_port in tgt_ports:
+        new_thread = Thread(target=conn_scan, args=(tgt_host, tgt_port))
+        new_thread.start()
         print "Scanning port %d" % tgt_port
-        conn_scan(tgt_host, tgt_port)
 
 
 # 格式化命令行参数
